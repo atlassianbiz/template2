@@ -1,46 +1,49 @@
-# This is a basic workflow to help you get started with Actions
+name: Jira GitHub Deploy Test
 
-name: CI
-
-# Controls when the workflow will run
 on:
-  # Triggers the workflow on push or pull request events but only for the "main" branch
   push:
-    branches: [ "*" ]
-  pull_request:
-    branches: [ "*" ]
-
-  # Allows you to run this workflow manually from the Actions tab
+    branches:
+      - main
   workflow_dispatch:
 
-# A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
-  # This workflow contains a single job called "build"
   build:
-    # The type of runner that the job will run on
     runs-on: ubuntu-latest
 
-    # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
-      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      # Runs a single command using the runners shell
-      - name: Run a one-line script
-        run: echo Hello, world!
-
-      # Runs a set of commands using the runners shell
-      - name: Run a multi-line script
+      - name: Dummy build
         run: |
-          echo Add other actions to build,
-          echo test, and deploy your project.
+          echo "Build step for Jira/GitHub deploy test"
+          echo "여기에서 실제 빌드/테스트를 수행할 수 있습니다."
+
   deploy:
+    # build 성공 후에만 실행
+    needs: build
     runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
 
-      - name: Deploy
-        run: |
-          echo "Deploying to production..."
-          # 여기에 실제 배포 명령어 작성
-          # 예: kubectl, docker, ssh 등
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # 1) GitHub Deployment 생성
+      - name: Create deployment
+        id: create_deployment
+        uses: chrnorm/deployment-action@releases/v1
+        with:
+          # Jira에서 환경 이름으로 보이는 값 (dev / test / staging / production 중 하나 권장)
+          environment: staging
+          # 어떤 커밋을 배포했는지
+          ref: ${{ github.sha }}
+
+      # 2) Deployment Status 전송 (Jira는 이 이벤트를 기준으로 배포를 인식함)
+      - name: Set deployment status (success)
+        uses: chrnorm/deployment-status@releases/v1
+        with:
+          state: success
+          deployment_id: ${{ steps.create_deployment.outputs.deployment_id }}
+          # 선택 옵션들(있으면 Jira에서 링크로 보이기 좋음)
+          environment_url: https://example.com/staging
+          log_url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
