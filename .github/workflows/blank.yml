@@ -33,17 +33,17 @@ jobs:
         id: create_deployment
         uses: chrnorm/deployment-action@releases/v1
         with:
-          # Jira에서 환경 이름으로 보이는 값 (dev / test / staging / production 중 하나 권장)
-          environment: staging
-          # 어떤 커밋을 배포했는지
-          ref: ${{ github.sha }}
+          token: ${{ secrets.GITHUB_TOKEN }}      # 🔴 필수: 토큰 추가
+          environment: staging                   # Jira에 표시될 환경 이름
+          ref: ${{ github.sha }}                 # 어떤 커밋을 배포하는지
+          initial_status: pending                # 선택값, pending → 나중에 success로 업데이트
 
-      # 2) Deployment Status 전송 (Jira는 이 이벤트를 기준으로 배포를 인식함)
+      # 2) Deployment Status 전송 (Jira는 이 이벤트를 기준으로 배포를 인식)
       - name: Set deployment status (success)
         uses: chrnorm/deployment-status@releases/v1
         with:
+          token: ${{ secrets.GITHUB_TOKEN }}      # 🔴 여기도 토큰 필수
           state: success
           deployment_id: ${{ steps.create_deployment.outputs.deployment_id }}
-          # 선택 옵션들(있으면 Jira에서 링크로 보이기 좋음)
           environment_url: https://example.com/staging
           log_url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
