@@ -1,36 +1,51 @@
-# This is a basic workflow to help you get started with Actions
+name: Jira GitHub Deploy Test
 
-name: CI
-
-# Controls when the workflow will run
 on:
-  # Triggers the workflow on push or pull request events but only for the "main" branch
   push:
-    branches: [ "*" ]
-  pull_request:
-    branches: [ "*" ]
-
-  # Allows you to run this workflow manually from the Actions tab
+    branches:
+      - "*"
   workflow_dispatch:
 
-# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+# GITHUB_TOKEN 권한
+permissions:
+  contents: read
+  deployments: write
+
 jobs:
-  # This workflow contains a single job called "build"
   build:
-    # The type of runner that the job will run on
+    name: Build (test only)
     runs-on: ubuntu-latest
 
-    # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
-      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      # Runs a single command using the runners shell
-      - name: Run a one-line script
-        run: echo Hello, world!
-
-      # Runs a set of commands using the runners shell
-      - name: Run a multi-line script
+      - name: Dummy build
         run: |
-          echo Add other actions to build,
-          echo test, and deploy your project.
+          echo "==== Build Start ===="
+          echo "여기에 실제 빌드/테스트 스크립트를 넣으면 됩니다."
+          echo "예: npm ci && npm test"
+          echo "==== Build End ===="
+
+  deploy:
+    name: Deploy (record only for Jira)
+    needs: build           # 빌드 성공 후에만 실행
+    runs-on: ubuntu-latest
+
+    steps:
+      # ✅ GitHub Deployment 생성 (Jira는 이 이벤트를 기준으로 배포를 인식)
+      - name: Create deployment
+        id: create_deployment
+        uses: chrnorm/deployment-action@releases/v1
+        with:
+          token: ${{ github.token }}   # 별도 secret 없이 GITHUB_TOKEN만 사용
+          environment: staging
+          ref: ${{ github.sha }}
+
+      # ✅ Deployment 상태 success 로 업데이트
+      - name: Set deployment status
+        uses: chrnorm/deployment-status@releases/v1
+        with:
+          token: ${{ github.token }}
+          state: success
+          deployment_id: ${{ steps.create_deployment.outputs.deployment_id }}
