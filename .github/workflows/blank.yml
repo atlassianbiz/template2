@@ -6,7 +6,7 @@ on:
       - "*"
   workflow_dispatch:
 
-# GITHUB_TOKEN 권한
+# GITHUB_TOKEN 권한 – 이거 없으면 deployments 못 만들 수 있음
 permissions:
   contents: read
   deployments: write
@@ -29,27 +29,37 @@ jobs:
 
   deploy:
     name: Deploy (record only for Jira)
-    needs: build           # 빌드 성공 후에만 실행
+    needs: build
     runs-on: ubuntu-latest
 
     steps:
-      # ✅ GitHub Deployment 생성 (Jira는 이 이벤트를 기준으로 배포를 인식)
-      - name: Create deployment
-        id: create_deployment
-        uses: chrnorm/deployment-action@releases/v1
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # 1) GitHub Deployment 생성
+      - name: Create GitHub deployment
+        id: deployment
+        uses: chrnorm/deployment-action@v2   # 내부적으로 v2.x.x 사용
         with:
-          token: ${{ github.token }}   # 별도 secret 없이 GITHUB_TOKEN만 사용
-          environment: staging
+          token: ${{ github.token }}
+          environment: staging              # 필요 시 production 등으로 변경
           ref: ${{ github.sha }}
 
-      # ✅ Deployment 상태 success 로 업데이트
-      - name: Set deployment status
-        uses: chrnorm/deployment-status@releases/v1
+      # 2) Deployment 상태 success 로 업데이트
+      - name: Update deployment status (success)
+        if: success()
+        uses: chrnorm/deployment-status@v2
         with:
           token: ${{ github.token }}
           state: success
-          deployment_id: ${{ steps.create_deployment.outputs.deployment_id }}
+          # 🔴 여기! 입력 이름은 deployment-id (kebab-case)
+          deployment-id: ${{ steps.deployment.outputs.deployment_id }}
 
-      # 예시) set-output 대신 GITHUB_OUTPUT 사용 예 (필요한 경우)
-      # - name: Set example output
-      #   run: echo "example_output=some_value" >> $GITHUB_OUTPUT
+      # (선택) 실패 시 상태 업데이트 하고 싶으면 아래도 추가 가능
+      # - name: Update deployment status (failure)
+      #   if: failure()
+      #   uses: chrnorm/deployment-status@v2
+      #   with:
+      #     token: ${{ github.token }}
+      #     state: failure
+      #     deployment-id: ${{ steps.deployment.outputs.deployment_id }}
