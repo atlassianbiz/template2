@@ -6,7 +6,7 @@ on:
       - "*"
   workflow_dispatch:
 
-# GITHUB_TOKEN 권한 – 이거 없으면 deployments 못 만들 수 있음
+# GITHUB_TOKEN 권한없으면 deployments 못 만들 수 있음
 permissions:
   contents: read
   deployments: write
@@ -23,7 +23,7 @@ jobs:
       - name: Dummy build
         run: |
           echo "==== Build Start ===="
-          echo "여기에 실제 빌드/테스트 스크립트를 넣으면 됩니다."
+          echo "여기에 실제 빌드/테스트 스크립트"
           echo "예: npm ci && npm test"
           echo "==== Build End ===="
 
@@ -39,23 +39,23 @@ jobs:
       # 1) GitHub Deployment 생성
       - name: Create GitHub deployment
         id: deployment
-        uses: chrnorm/deployment-action@v2   # 내부적으로 v2.x.x 사용
+        uses: chrnorm/deployment-action@v2   # 내부적으로 v2.x.x
         with:
           token: ${{ github.token }}
-          environment: staging              # 필요 시 production 등으로 변경
+          environment: production            # 필요 시 변경 staging
           ref: ${{ github.sha }}
 
-      # 2) Deployment 상태 success 로 업데이트
+      # 2) Deployment 상태 업데이트
       - name: Update deployment status (success)
         if: success()
         uses: chrnorm/deployment-status@v2
         with:
           token: ${{ github.token }}
           state: success
-          # 🔴 여기! 입력 이름은 deployment-id (kebab-case)
+          # 입력 이름은 deployment-id (kebab-case)
           deployment-id: ${{ steps.deployment.outputs.deployment_id }}
 
-      # (선택) 실패 시 상태 업데이트 하고 싶으면 아래도 추가 가능
+      # (선택) 실패 시 상태 업데이트 하고 싶으면 아래도 추가
       # - name: Update deployment status (failure)
       #   if: failure()
       #   uses: chrnorm/deployment-status@v2
